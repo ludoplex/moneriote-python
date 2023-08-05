@@ -12,7 +12,7 @@ class DnsProvider(object):
 
     @property
     def fulldomain_name(self):
-        return '%s.%s' % (self.subdomain_name, self.domain_name)
+        return f'{self.subdomain_name}.{self.domain_name}'
 
     def get_records(self):
         raise NotImplementedError()

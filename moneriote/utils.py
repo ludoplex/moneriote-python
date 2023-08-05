@@ -49,7 +49,7 @@ def random_user_agent():
 
 def make_json_request(url, headers=None, method='GET', verbose=True, **kwargs):
     if verbose:
-        log_msg("%s: %s" % (method, url))
+        log_msg(f"{method}: {url}")
 
     kwargs.setdefault('verify', True)
     kwargs.setdefault('timeout', 5)
@@ -75,12 +75,12 @@ def make_json_request(url, headers=None, method='GET', verbose=True, **kwargs):
         return resp.json()
     except Exception as ex:
         if verbose:
-            log_err("Error (%s): %s" % (url, str(ex)))
+            log_err(f"Error ({url}): {str(ex)}")
 
 
 def parse_ini(fn):
     if not os.path.isfile(fn):
-        log_err("%s missing" % fn, fatal=True)
+        log_err(f"{fn} missing", fatal=True)
 
     config = configparser.ConfigParser()
     config.read(fn)
@@ -88,9 +88,7 @@ def parse_ini(fn):
     def try_cast(val):
         if val.isdigit():
             return int(val)
-        if val.lower() in ['true', 'false']:
-            return bool(val)
-        return val
+        return bool(val) if val.lower() in ['true', 'false'] else val
 
     md = {k: try_cast(v) for k, v in config._sections.get('MoneroDaemon', {}).items()}
     dns = {k: try_cast(v) for k, v in config._sections.get('DNS', {}).items()}
@@ -100,9 +98,8 @@ def parse_ini(fn):
 
 def parse_ban_list(path):
     if not os.path.isfile(path):
-        log_err("%s missing" % path, fatal=True)
+        log_err(f"{path} missing", fatal=True)
     ban_list = []
     with open(os.path.join(path), 'r') as f:
-        for line in f:
-            ban_list.append(line.strip())
+        ban_list.extend(line.strip() for line in f)
     return ban_list

@@ -56,17 +56,14 @@ class RpcNodeList:
     def cache_write(self):
         """Writes a cache file of valid nodes"""
         now = datetime.now()
-        data = []
-
-        for node in self.nodes:
-            if node.valid:
-                data.append({'address': node.address,
-                             'port': node.port,
-                             'dt': node.dt})
+        data = [
+            {'address': node.address, 'port': node.port, 'dt': node.dt}
+            for node in self.nodes
+            if node.valid
+        ]
         try:
-            f = open(PATH_CACHE, 'w')
-            f.write(json.dumps(data, indent=4))
-            f.close()
+            with open(PATH_CACHE, 'w') as f:
+                f.write(json.dumps(data, indent=4))
         except Exception as ex:
             log_err('Writing \'%s\' failed' % PATH_CACHE)
             raise
@@ -81,9 +78,8 @@ class RpcNodeList:
         log_msg('Reading \'%s\'' % path)
 
         try:
-            f = open(path, 'r')
-            blob = json.loads(f.read())
-            f.close()
+            with open(path, 'r') as f:
+                blob = json.loads(f.read())
         except Exception as ex:
             log_err('Reading \'%s\' failed' % path)
             return RpcNodeList()
@@ -120,7 +116,7 @@ class RpcNode:
         now = datetime.now()
         # Scans the current node to see if the RPC port is available and is within the accepted range
         url = 'http://%s:%d/' % (obj.address, obj.port)
-        url = '%s%s' % (url, 'getheight')
+        url = f'{url}getheight'
 
         if len(obj.dt) == 0:
             obj.dt = now.strftime('%Y-%m-%d %H:%M:%S')

@@ -45,10 +45,8 @@ class Moneriote:
 
         if not os.path.isfile(PATH_CACHE):
             log_msg("Auto creating \'%s\'" % PATH_CACHE)
-            f = open(PATH_CACHE, 'a')
-            f.write('[]')
-            f.close()
-        
+            with open(PATH_CACHE, 'a') as f:
+                f.write('[]')
         if ban_list_path != '':
             ban_list = parse_ban_list(ban_list_path)
             log_msg('Load %d nodes from %s'%(len(ban_list), ban_list_path))
@@ -70,7 +68,7 @@ class Moneriote:
         nodes += RpcNodeList.cache_read(PATH_CACHE)  # from `cached_nodes.json`
         if nodes:
             nodes = self.scan(nodes, remove_invalid=True)
-        
+
         now = time.time()
         this_round_uptime = now - self.last_mass_scan_time
 
@@ -85,13 +83,10 @@ class Moneriote:
             nodes.shuffle()
 
             inserts = nodes.nodes[:self.dns_provider.max_records]
-            insert_ips = []
-            for node in inserts:
-                insert_ips.append(node.address)
-            
             dns_nodes = self.dns_provider.get_records()
 
             if dns_nodes != None:
+                insert_ips = [node.address for node in inserts]
                 # insert new records
                 for node in inserts:
                     if node.address not in dns_nodes:
@@ -103,7 +98,7 @@ class Moneriote:
                         self.dns_provider.delete_record(node)
             else:
                 log_err('Could not fetch DNS records, skipping this update.')
-        
+
         else:
             log_err('Could not get any valid node, skipping this update.')
 
@@ -121,7 +116,7 @@ class Moneriote:
             filtered_nodes = RpcNodeList()
             for node in nodes:
                 if node.address in self.ban_list:
-                    log_msg('Ban %s'%node.address)
+                    log_msg(f'Ban {node.address}')
                 else:
                     filtered_nodes.append(node)
             nodes = filtered_nodes
@@ -148,11 +143,11 @@ class Moneriote:
 
         try:
             resp = requests.get(url, timeout=2)
-            assert resp.status_code in [401, 403, 404]
+            assert resp.status_code in {401, 403, 404}
             assert resp.headers.get('Server', '').startswith('Epee')
             return True
         except Exception as ex:
-            log_err("monerod not reachable: %s" % url, fatal=True)
+            log_err(f"monerod not reachable: {url}", fatal=True)
 
     def monerod_get_height(self, method='compare'):
         """
@@ -168,7 +163,7 @@ class Moneriote:
         if method == ['compare', 'monerod']:
             output = self._daemon_command(cmd="print_height")
             if isinstance(output, str) and output.startswith('Error') or not output:
-                log_err("monerod output: %s" % output)
+                log_err(f"monerod output: {output}")
             elif isinstance(output, str):
                 data['md_height'] = int(re.sub('[^0-9]', '', output.splitlines()[1]))
                 log_msg('monerod height is %d' % data['md_height'])
@@ -207,8 +202,6 @@ class Moneriote:
                     log_msg('Fetching xmrchain JSON has failed. Retrying.')
                     retries += 1
                     time.sleep(1)
-                    continue
-
         if data:
             return max(data.values())
         log_err('Unable to obtain blockheight.')

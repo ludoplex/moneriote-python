@@ -31,16 +31,19 @@ class Cloudflare(DnsProvider):
     def get_records(self):
         max_retries = 5
         nodes = RpcNodeList()
-        log_msg('Fetching existing record(s) (%s.%s)' % (self.subdomain_name, self.domain_name))
+        log_msg(
+            f'Fetching existing record(s) ({self.subdomain_name}.{self.domain_name})'
+        )
 
         retries = 0
-        while (True):
+        while True:
             try:
-                result = make_json_request('%s/%s/dns_records/?type=A&name=%s.%s' % (
-                    self.api_base, self.zone_id,
-                    self.subdomain_name, self.domain_name), headers=self.headers)
+                result = make_json_request(
+                    f'{self.api_base}/{self.zone_id}/dns_records/?type=A&name={self.subdomain_name}.{self.domain_name}',
+                    headers=self.headers,
+                )
                 records = result.get('result')
-                
+
                 # filter on A records / subdomain
                 for record in records:
                     if record.get('type') != 'A' or record.get('name') != self.fulldomain_name:
@@ -48,11 +51,11 @@ class Cloudflare(DnsProvider):
 
                     node = RpcNode(address=record.get('content'), uid=record.get('id'))
                     nodes.append(node)
-                    log_msg('> A %s %s' % (record.get('name'), record.get('content')))
+                    log_msg(f"> A {record.get('name')} {record.get('content')}")
                 return nodes
-            
+
             except Exception as ex:
-                log_err("Cloudflare record fetching failed: %s" % (str(ex)))
+                log_err(f"Cloudflare record fetching failed: {str(ex)}")
                 retries += 1
                 time.sleep(1)
                 if retries > max_retries:
@@ -60,10 +63,10 @@ class Cloudflare(DnsProvider):
         
 
     def add_record(self, node: RpcNode):
-        log_msg('Record insertion: %s' % node.address)
+        log_msg(f'Record insertion: {node.address}')
 
         try:
-            url = '%s/%s/dns_records' % (self.api_base, self.zone_id)
+            url = f'{self.api_base}/{self.zone_id}/dns_records'
             make_json_request(url=url, method='POST', verbose = False, headers=self.headers, json={
                 'name': self.subdomain_name,
                 'content': node.address,
@@ -71,16 +74,16 @@ class Cloudflare(DnsProvider):
                 'ttl': 120
             })
         except Exception as ex:
-            log_err("Cloudflare record (%s) insertion failed: %s" % (node.address, str(ex)))
+            log_err(f"Cloudflare record ({node.address}) insertion failed: {str(ex)}")
 
     def delete_record(self, node: RpcNode):
         # Delete DNS Record
-        log_msg('Cloudflare record deletion: %s' % node.address)
+        log_msg(f'Cloudflare record deletion: {node.address}')
 
         try:
-            url = '%s/%s/dns_records/%s' % (self.api_base, self.zone_id, node.uid)
+            url = f'{self.api_base}/{self.zone_id}/dns_records/{node.uid}'
             data = make_json_request(url=url, method='DELETE', verbose = False, headers=self.headers)
             assert data.get('success') is True
             return data.get('result')
         except Exception as ex:
-            log_err("Record (%s) deletion failed: %s" % (node.address, str(ex)))
+            log_err(f"Record ({node.address}) deletion failed: {str(ex)}")
