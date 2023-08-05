@@ -47,10 +47,7 @@ def convert_value(value):
     if isinstance(value, bool):
         return 1 if value else ''
 
-    if not value:
-        return ''
-
-    return value
+    return '' if not value else value
 
 
 class TransIPDnsEntry(SudsObject):
@@ -83,7 +80,7 @@ class TransIP(DnsProvider):
         imp = Import('http://schemas.xmlsoap.org/soap/encoding/')
         doc = ImportDoctor(imp)
 
-        suds_kwargs = dict()
+        suds_kwargs = {}
         if suds_requests:
             suds_kwargs['transport'] = suds_requests.RequestsTransport()
 
@@ -133,10 +130,10 @@ class TransIP(DnsProvider):
 
                     for objectkey, objectvalue in entryvalue:
                         objectvalue = convert_value(objectvalue)
-                        sign[str(index) + '[' + str(entryindex) + '][' + objectkey + ']'] = objectvalue
+                        sign[f'{str(index)}[{str(entryindex)}][{objectkey}]'] = objectvalue
             elif isinstance(value, SudsObject):
                 for entryindex, entryvalue in value:
-                    key = str(index) + '[' + str(entryindex) + ']'
+                    key = f'{str(index)}[{str(entryindex)}]'
                     sign[key] = convert_value(entryvalue)
             else:
                 sign[index] = convert_value(value)
@@ -147,17 +144,14 @@ class TransIP(DnsProvider):
         sign['__nonce'] = nonce
 
         return urlencode(sign) \
-            .replace('%5B', '[') \
-            .replace('%5D', ']') \
-            .replace('+', '%20') \
-            .replace('%7E', '~')  # Comply with RFC3989. This replacement is also in TransIP's sample PHP library.
+                .replace('%5B', '[') \
+                .replace('%5D', ']') \
+                .replace('+', '%20') \
+                .replace('%7E', '~')  # Comply with RFC3989. This replacement is also in TransIP's sample PHP library.
 
     def update_cookie(self, cookies):
         """ Updates the cookie for the upcoming call to the API. """
-        temp = []
-        for k, val in cookies.items():
-            temp.append("%s=%s" % (k, val))
-
+        temp = [f"{k}={val}" for k, val in cookies.items()]
         cookiestring = ';'.join(temp)
         self.soap_client.set_options(headers={'Cookie': cookiestring})
 
@@ -181,16 +175,14 @@ class TransIP(DnsProvider):
 
         signature = self._sign(message_to_sign)
 
-        cookies = {
+        return {
             "nonce": nonce,
             "timestamp": timestamp,
             "mode": mode,
             "clientVersion": '0.4.1',
             "login": self.login,
-            "signature": signature
+            "signature": signature,
         }
-
-        return cookies
 
     def _simple_request(self, method, *args, **kwargs):
         cookie = self.build_cookie(mode=kwargs.get('mode', MODE_RO), method=method, parameters=args)
